@@ -115,10 +115,3 @@ LiquidAX is a decentralized protocol, with no actors.
 ## Conclusion
 
 LiquidAX revolutionizes stablecoin issuance through its oracle-free, auction-driven liquidation process. By allowing users to determine collateral outcomes via open bids, the protocol ensures fairness, decentralization, and stability. The dealer mechanism, combined with rules that conclude the auction after an inactivity period, prevents unnecessary liquidations and ensures that market-driven decisions prevail. LiquidAX empowers participants to maintain a stable and decentralized financial ecosystem, aligning incentives for borrowers, dealers, and auction participants.
-
-Feedback on the Name "LiquidAX"
-The name "LiquidAX" is strong and conveys the key concepts behind the protocol:
-
-"Liquid" suggests liquidity and the process of liquidation, which are central to the protocol's functionality.
-"AX" gives the name a modern, tech-savvy edge, making it memorable and aligning with the branding of other successful DeFi protocols.
-Overall, "LiquidAX" is a suitable and marketable name that effectively communicates the core functionality and purpose of the protocol.
