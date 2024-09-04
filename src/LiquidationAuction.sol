@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./OrderedDoublyLinkedList.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IBurnableToken is IERC20 {
     function burn(address account, uint256 amount) external;
@@ -27,7 +28,9 @@ contract Auction is ReentrancyGuard {
     uint256 public borrowAmount;
     uint256 public collateralAmount;
     bool public isFinalized;
+    uint256 public constant MIN_LIQUIDATION_THRESHOLD = 110; // 110%
     uint256 public liquidationTargetThreshold;
+    uint256 public targetRepayAmount;
     mapping(uint256 => address) public bidToAddress;
 
     IERC20 public collateralToken;
@@ -37,10 +40,10 @@ contract Auction is ReentrancyGuard {
     mapping(address => uint256) public liquidationStakes;
     mapping(address => uint256) public nonLiquidationStakes;
 
-    uint256 public targetRepayAmount;
-
     mapping(address => bool) public userWantsToRepay;
     uint256 public usersWillingToRepay;
+
+    LiquidationAuction public liquidationAuctionContract;
 
     event BidPlaced(
         address bidder,
@@ -57,6 +60,7 @@ contract Auction is ReentrancyGuard {
         bool wantsToRepay,
         uint256 newRepayAmount
     );
+    event LiquidationThresholdUpdated(uint256 newThreshold);
 
     constructor(
         uint256 _tokenId,
@@ -65,8 +69,8 @@ contract Auction is ReentrancyGuard {
         uint256 _collateralAmount,
         address _collateralToken,
         address _laxdToken,
-        uint256 _liquidationTargetThreshold,
-        address _owner
+        address _owner,
+        address _liquidationAuctionContract
     ) {
         tokenId = _tokenId;
         startTime = block.timestamp;
@@ -75,13 +79,15 @@ contract Auction is ReentrancyGuard {
         collateralAmount = _collateralAmount;
         collateralToken = IERC20(_collateralToken);
         laxdToken = IBurnableToken(_laxdToken);
-        liquidationTargetThreshold = _liquidationTargetThreshold;
-        targetRepayAmount =
-            (borrowAmount * (100 + liquidationTargetThreshold)) /
-            100;
         owner = _owner;
         auctionEndTime = block.timestamp + BID_EXTENSION_PERIOD;
         isLiquidationWinning = false; // Initially, non-liquidation side is winning
+        liquidationAuctionContract = LiquidationAuction(
+            _liquidationAuctionContract
+        );
+        liquidationTargetThreshold = liquidationAuctionContract
+            .LIQUIDATION_TARGET_THRESHOLD();
+        updateTargetRepayAmount();
     }
 
     function getBidId() internal view returns (uint256) {
@@ -273,10 +279,13 @@ contract Auction is ReentrancyGuard {
 
         if (liquidationBetsSum > nonLiquidationBetsSum) {
             // Handle liquidation case
-            uint256 highestBid = liquidationBids.getHead();
+            uint256 highestBid = liquidationBids.getTail();
             address winner = bidToAddress[highestBid];
             uint256 repayAmount = liquidationBids.get(highestBid).value;
             laxdToken.burn(winner, repayAmount);
+
+            // Update liquidation threshold after finalization
+            updateLiquidationThreshold(repayAmount);
         } else {
             // Handle non-liquidation case
             collateralToken.transfer(owner, collateralAmount);
@@ -309,14 +318,45 @@ contract Auction is ReentrancyGuard {
         //Bid memory bid = abi.decode(highestBid.data, (Bid));
         laxdToken.burn(address(this), repayAmount);
     }
+
+    function updateTargetRepayAmount() private {
+        targetRepayAmount = (borrowAmount * liquidationTargetThreshold) / 100;
+    }
+
+    function updateLiquidationThreshold(uint256 finalRepayValue) private {
+        uint256 repayPercentage = (finalRepayValue * 100) / borrowAmount;
+        uint256 oldThreshold = liquidationTargetThreshold;
+
+        if (repayPercentage < liquidationTargetThreshold) {
+            uint256 increase = liquidationTargetThreshold - repayPercentage;
+            liquidationTargetThreshold += increase;
+        } else if (repayPercentage > MIN_LIQUIDATION_THRESHOLD) {
+            uint256 decrease = repayPercentage - liquidationTargetThreshold;
+            liquidationTargetThreshold = Math.max(
+                MIN_LIQUIDATION_THRESHOLD,
+                liquidationTargetThreshold - decrease
+            );
+        }
+
+        updateTargetRepayAmount();
+        liquidationAuctionContract.updateLiquidationThreshold(
+            tokenId,
+            oldThreshold,
+            liquidationTargetThreshold
+        );
+        emit LiquidationThresholdUpdated(liquidationTargetThreshold);
+    }
 }
 
 contract LiquidationAuction is Ownable {
-    uint256 public LIQUIDATION_TARGET_THRESHOLD = 10; // 10%
+    uint256 public LIQUIDATION_TARGET_THRESHOLD = 110; // 110%
 
     IERC20 public collateralToken;
     IBurnableToken public laxdToken;
 
+    mapping(uint256 => address) public auctionToTokenId;
+
+    event LiquidationThresholdUpdated(uint256 newThreshold);
     event AuctionStarted(
         uint256 indexed tokenId,
         address indexed auctionAddress,
@@ -354,6 +394,7 @@ contract LiquidationAuction is Ownable {
             borrowAmount,
             collateralAmount
         );
+        auctionToTokenId[tokenId] = address(newAuction);
 
         // Initialize the auction with the first bid
         // This part needs to be implemented in the Auction contract
@@ -382,8 +423,8 @@ contract LiquidationAuction is Ownable {
                 collateralAmount,
                 address(collateralToken),
                 address(laxdToken),
-                LIQUIDATION_TARGET_THRESHOLD,
-                msg.sender
+                msg.sender,
+                address(this)
             );
     }
 
@@ -396,6 +437,16 @@ contract LiquidationAuction is Ownable {
         return repayAmount < targetRepayAmount;
     }
 
+    function updateLiquidationThreshold(
+        uint256 tokenId,
+        uint256 oldThreshold,
+        uint256 newThreshold
+    ) external {
+        require(msg.sender == owner(), "Only owner can update threshold");
+        require(newThreshold >= 110, "Threshold must be at least 110%");
+        LIQUIDATION_TARGET_THRESHOLD = newThreshold;
+        emit LiquidationThresholdUpdated(newThreshold);
+    }
     // Other functions like getAuctionDetails can be implemented here if needed
     // ...
 }

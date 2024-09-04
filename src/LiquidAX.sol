@@ -25,7 +25,10 @@ contract LiquidAX is ERC721, ReentrancyGuard {
     constructor(address _collateralToken) ERC721("LiquidAX Borrowing", "LAXB") {
         collateralToken = IERC20(_collateralToken);
         laxdToken = new LAXDToken();
-        liquidationAuction = new LiquidationAuction();
+        liquidationAuction = new LiquidationAuction(
+            _collateralToken,
+            address(laxdToken)
+        );
     }
 
     function canBorrow(uint256 externalId) public view returns (bool) {
