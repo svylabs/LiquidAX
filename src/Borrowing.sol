@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
 library Borrowing {
     struct BorrowingData {
         uint256 collateralAmount;

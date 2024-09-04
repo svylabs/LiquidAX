@@ -1,10 +1,11 @@
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./LAXDToken.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Borrowing.sol";
 import "./LiquidationAuction.sol";
+import "./LAXDTOken.sol";
 
 contract LiquidAX is ReentrancyGuard {
     using Borrowing for Borrowing.BorrowingData;
