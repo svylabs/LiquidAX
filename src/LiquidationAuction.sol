@@ -324,11 +324,11 @@ contract Auction is ReentrancyGuard {
         uint256 repayPercentage = (finalRepayValue * 100) / borrowAmount;
         uint256 oldThreshold = liquidationTargetThreshold;
 
-        if (repayPercentage < liquidationTargetThreshold) {
-            uint256 increase = liquidationTargetThreshold - repayPercentage;
+        if (repayPercentage <= MIN_LIQUIDATION_THRESHOLD) {
+            uint256 increase = MIN_LIQUIDATION_THRESHOLD - repayPercentage;
             liquidationTargetThreshold += increase;
         } else if (repayPercentage > MIN_LIQUIDATION_THRESHOLD) {
-            uint256 decrease = repayPercentage - liquidationTargetThreshold;
+            uint256 decrease = repayPercentage - MIN_LIQUIDATION_THRESHOLD;
             liquidationTargetThreshold = Math.max(
                 MIN_LIQUIDATION_THRESHOLD,
                 liquidationTargetThreshold - decrease
