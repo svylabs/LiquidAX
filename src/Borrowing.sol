@@ -22,5 +22,11 @@ library Borrowing {
         self.isWithdrawn = false;
     }
 
+    function calculateRatio(
+        BorrowingData storage self
+    ) internal view returns (uint256) {
+        return (self.borrowAmount * 1e18) / self.collateralAmount;
+    }
+
     // Additional functions can be added here to manage borrowing operations
 }

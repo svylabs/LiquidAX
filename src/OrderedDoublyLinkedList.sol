@@ -168,7 +168,7 @@ library OrderedDoublyLinkedList {
     function getNode(
         List storage self,
         uint256 id
-    ) internal view returns (Node memory) {
+    ) public view returns (Node memory) {
         return self.nodes[id];
     }
 }

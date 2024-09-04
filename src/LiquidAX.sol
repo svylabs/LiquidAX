@@ -7,15 +7,18 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Borrowing.sol";
 import "./LiquidationAuction.sol";
 import "./LAXDTOken.sol";
+import "./OrderedDoublyLinkedList.sol";
 
 contract LiquidAX is ERC721, ReentrancyGuard {
     using Borrowing for Borrowing.BorrowingData;
+    using OrderedDoublyLinkedList for OrderedDoublyLinkedList.List;
 
     LAXDToken public laxdToken;
     IERC20 public collateralToken;
     LiquidationAuction public liquidationAuction;
 
     mapping(uint256 => Borrowing.BorrowingData) public borrowings;
+    OrderedDoublyLinkedList.List private borrowingsList;
 
     uint256 public constant WITHDRAWAL_DELAY = 1 hours;
 
@@ -73,7 +76,10 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         return externalId;
     }
 
-    function withdraw(uint256 tokenId) external nonReentrant {
+    function withdraw(
+        uint256 tokenId,
+        uint256 nearestSpot
+    ) external nonReentrant {
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
         Borrowing.BorrowingData storage borrowing = borrowings[tokenId];
         require(borrowing.borrowAmount > 0, "No active borrowing");
@@ -87,7 +93,28 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         borrowing.isWithdrawn = true;
         laxdToken.transfer(msg.sender, borrowing.borrowAmount);
 
+        // Calculate the ratio (borrowAmount per collateral)
+        uint256 ratio = (borrowing.borrowAmount * 1e18) /
+            borrowing.collateralAmount;
+
+        // Insert the borrowing into the ordered list
+        borrowingsList.upsert(tokenId, ratio, nearestSpot);
+
         emit Withdrawn(msg.sender, borrowing.borrowAmount);
+    }
+
+    function getLowestRiskBorrowing() public view returns (uint256) {
+        return borrowingsList.getHead();
+    }
+
+    function getHighestRiskBorrowing() public view returns (uint256) {
+        return borrowingsList.getTail();
+    }
+
+    function getBorrowingsListNode(
+        uint256 id
+    ) public view returns (OrderedDoublyLinkedList.Node memory) {
+        return borrowingsList.getNode(id);
     }
 
     // Additional functions to be implemented:
