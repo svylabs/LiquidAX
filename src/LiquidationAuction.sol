@@ -161,21 +161,9 @@ contract Auction is ReentrancyGuard {
         if (isLiquidation) {
             liquidationBetsSum += msg.value;
             liquidationStakes[msg.sender] += msg.value;
-            OrderedDoublyLinkedList.upsert(
-                liquidationBids,
-                bidId,
-                liquidationStakes[msg.sender],
-                nearestSpot
-            );
         } else {
             nonLiquidationBetsSum += msg.value;
             nonLiquidationStakes[msg.sender] += msg.value;
-            OrderedDoublyLinkedList.upsert(
-                nonLiquidationBids,
-                bidId,
-                nonLiquidationStakes[msg.sender],
-                nearestSpot
-            );
         }
 
         bool leadChanged = updateLeadingBidSide();
