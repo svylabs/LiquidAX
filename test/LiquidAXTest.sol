@@ -71,4 +71,48 @@ contract LiquidAXTest is Test {
         assertTrue(isWithdrawn == 1);
         assertEq(liquidAX.ownerOf(externalId), user);
     }
+
+    function testNFTTransferSuccess() public {
+        uint256 externalId = 1;
+        address newOwner = address(2);
+
+        // Setup: Borrow to mint NFT
+        vm.startPrank(user);
+        collateralToken.approve(address(liquidAX), COLLATERAL_AMOUNT);
+        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT, externalId);
+
+        // Transfer NFT
+        liquidAX.transferFrom(user, newOwner, externalId);
+        vm.stopPrank();
+
+        // Assert
+        assertEq(liquidAX.ownerOf(externalId), newOwner);
+    }
+
+    function testNFTTransferFailure() public {
+        uint256 externalId = 1;
+        address newOwner = address(2);
+
+        // Setup: Borrow to mint NFT
+        vm.startPrank(user);
+        collateralToken.approve(address(liquidAX), COLLATERAL_AMOUNT);
+        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT, externalId);
+
+        // Attempt to transfer NFT from non-owner
+        vm.stopPrank();
+        vm.startPrank(newOwner);
+
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "ERC721InsufficientApproval(address,uint256)",
+                newOwner,
+                externalId
+            )
+        );
+        liquidAX.transferFrom(user, newOwner, externalId);
+        vm.stopPrank();
+
+        // Assert
+        assertEq(liquidAX.ownerOf(externalId), user);
+    }
 }
