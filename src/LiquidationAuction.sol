@@ -20,7 +20,6 @@ contract Auction is ReentrancyGuard {
 
     uint256 public tokenId;
     uint256 public startTime;
-    uint256 public dealerFee;
     uint256 public liquidationBetsSum;
     uint256 public nonLiquidationBetsSum;
     OrderedDoublyLinkedList.List public liquidationBids;
@@ -64,7 +63,6 @@ contract Auction is ReentrancyGuard {
 
     constructor(
         uint256 _tokenId,
-        uint256 _dealerFee,
         uint256 _borrowAmount,
         uint256 _collateralAmount,
         address _collateralToken,
@@ -74,7 +72,6 @@ contract Auction is ReentrancyGuard {
     ) {
         tokenId = _tokenId;
         startTime = block.timestamp;
-        dealerFee = _dealerFee;
         borrowAmount = _borrowAmount;
         collateralAmount = _collateralAmount;
         collateralToken = IERC20(_collateralToken);
@@ -361,7 +358,6 @@ contract LiquidationAuction is Ownable {
         uint256 indexed tokenId,
         address indexed auctionAddress,
         uint256 repayAmount,
-        uint256 dealerFee,
         uint256 initialBet
     );
 
@@ -376,21 +372,14 @@ contract LiquidationAuction is Ownable {
     function initiateAuction(
         uint256 tokenId,
         uint256 repayAmount,
-        uint256 dealerFee,
         uint256 borrowAmount,
         uint256 collateralAmount
     ) external payable onlyOwner {
-        require(
-            msg.value > dealerFee,
-            "Insufficient funds for dealer fee and bet"
-        );
-
-        uint256 betAmount = msg.value - dealerFee;
+        uint256 betAmount = msg.value;
         bool isLiquidation = isLiquidationAuction(borrowAmount, repayAmount);
 
         Auction newAuction = createAuction(
             tokenId,
-            dealerFee,
             borrowAmount,
             collateralAmount
         );
@@ -404,21 +393,18 @@ contract LiquidationAuction is Ownable {
             tokenId,
             address(newAuction),
             repayAmount,
-            dealerFee,
             betAmount
         );
     }
 
     function createAuction(
         uint256 tokenId,
-        uint256 dealerFee,
         uint256 borrowAmount,
         uint256 collateralAmount
     ) internal returns (Auction) {
         return
             new Auction(
                 tokenId,
-                dealerFee,
                 borrowAmount,
                 collateralAmount,
                 address(collateralToken),
