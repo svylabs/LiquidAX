@@ -2,7 +2,7 @@
 
 # Abstract
 
-LiquidAX is a decentralized, oracle-free stablecoin protocol that enables users to borrow stablecoins against specific collateral tokens under user-defined conditions. The protocol introduces a liquidation auction mechanism where users place open bids, creating a transparent, market-driven process to determine the necessity of liquidation. By eliminating reliance on external oracles and incorporating a dealer mechanism to initiate auctions, LiquidAX ensures a secure, decentralized, and efficient liquidation process. Liquidation occurs only if the auction concludes with bids favoring liquidation. The auction concludes when no new bids are placed for a one-hour period after the last bid. Borrowers have the right to adjust their collateral ratio during the auction, which can abort the auction. This document details the core principles and mechanisms that drive LiquidAX.
+LiquidAX is a decentralized, oracle-free stablecoin protocol that allows users to borrow stablecoins against specific collateral tokens under user-defined conditions. The protocol introduces a liquidation auction mechanism where users place open bids, creating a transparent, market-driven process to determine the necessity of liquidation. Liquidation occurs only if the cumulative bids favoring liquidation exceed those opposing it by the end of the auction. The auction concludes when no new bids are placed on either side for one hour, ensuring a fair and dynamic process. Borrowers have the right to adjust their collateral ratio during the auction by depositing additional collateral or repaying part or all of their debt. This action can abort the auction, and participants can withdraw their bets without loss, except for a fee paid by the borrower, which is distributed to the auction participants. No fee is required if the borrower acts within the first hour of the auction. By eliminating reliance on external oracles and incorporating a dealer mechanism to initiate auctions, LiquidAX ensures a secure, decentralized, and efficient liquidation process. This document details the core principles and mechanisms that drive LiquidAX.
 
 # Introduction
 
@@ -10,7 +10,7 @@ Stablecoins are crucial to the decentralized finance (DeFi) ecosystem, offering 
 
 # Oracle-Free Stability: A Key Feature
 
-LiquidAX’s oracle-free architecture is a defining feature. Traditional DeFi protocols often rely on external oracles to determine collateral value, creating risks such as manipulation, latency, and centralization. LiquidAX circumvents these issues by relying solely on on-chain auction mechanisms, where users' open bids determine the need for liquidation. This decentralized process strengthens the protocol’s security and user trust.
+LiquidAX’s oracle-free architecture is a defining feature. Traditional Stablecoin protocols often rely on external oracles to determine collateral value, creating risks such as manipulation, centralization. LiquidAX circumvents these issues by relying solely on on-chain auction mechanisms, where users' open bids determine the need for liquidation. This decentralized process strengthens the protocol’s security and user trust.
 
 # Overview of LiquidAX Protocol
 
