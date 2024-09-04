@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
@@ -30,9 +31,10 @@ contract LiquidAXTest is Test {
     }
 
     function testBorrow() public {
+        uint256 externalId = 1;
         vm.startPrank(user);
         collateralToken.approve(address(liquidAX), COLLATERAL_AMOUNT);
-        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT);
+        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT, externalId);
         vm.stopPrank();
 
         assertEq(
@@ -42,28 +44,31 @@ contract LiquidAXTest is Test {
         assertEq(laxdToken.balanceOf(address(liquidAX)), BORROW_AMOUNT);
 
         (uint256 collateral, uint256 borrowed, , , ) = liquidAX.borrowings(
-            user
+            externalId
         );
         assertEq(collateral, COLLATERAL_AMOUNT);
         assertEq(borrowed, BORROW_AMOUNT);
+        assertEq(liquidAX.ownerOf(externalId), user);
     }
 
     function testWithdraw() public {
+        uint256 externalId = 1;
         // First borrow
         vm.startPrank(user);
         collateralToken.approve(address(liquidAX), COLLATERAL_AMOUNT);
-        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT);
+        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT, externalId);
 
         // Advance time to meet withdrawal delay
         vm.warp(block.timestamp + liquidAX.WITHDRAWAL_DELAY() + 1);
 
         // Withdraw
-        liquidAX.withdraw();
+        liquidAX.withdraw(externalId);
         vm.stopPrank();
 
         assertEq(laxdToken.balanceOf(user), BORROW_AMOUNT);
 
-        (, , uint256 isWithdrawn, , ) = liquidAX.borrowings(user);
+        (, , uint256 isWithdrawn, , ) = liquidAX.borrowings(externalId);
         assertTrue(isWithdrawn == 1);
+        assertEq(liquidAX.ownerOf(externalId), user);
     }
 }
