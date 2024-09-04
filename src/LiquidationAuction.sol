@@ -335,7 +335,6 @@ contract Auction is ReentrancyGuard {
             );
         }
 
-        updateTargetRepayAmount();
         liquidationAuctionContract.updateLiquidationThreshold(
             tokenId,
             oldThreshold,
