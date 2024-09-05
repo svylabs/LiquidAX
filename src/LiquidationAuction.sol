@@ -154,11 +154,10 @@ contract Auction is ReentrancyGuard {
         emit BidPlaced(msg.sender, msg.value, repayAmount, isLiquidation);
     }
 
-    function increaseBid(uint256 nearestSpot) external payable nonReentrant {
+    function increaseBid() external payable nonReentrant {
         require(block.timestamp < auctionEndTime, "Auction ended");
         require(msg.value > 0, "Increase amount must be greater than 0");
 
-        uint256 bidId = getBidId();
         bool isLiquidation = liquidationStakes[msg.sender] > 0;
 
         if (isLiquidation) {
