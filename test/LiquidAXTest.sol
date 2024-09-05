@@ -39,9 +39,18 @@ contract LiquidAXTest is Test {
 
     function testBorrow() public {
         uint256 externalId = 1;
+        uint256 feePercentage = 100; // 1%
+        uint256 nearestSpot = 0;
+
         vm.startPrank(user);
         collateralToken.approve(address(liquidAX), COLLATERAL_AMOUNT);
-        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT, externalId);
+        liquidAX.borrow(
+            COLLATERAL_AMOUNT,
+            BORROW_AMOUNT,
+            externalId,
+            feePercentage,
+            nearestSpot
+        );
         vm.stopPrank();
 
         assertEq(
@@ -50,11 +59,17 @@ contract LiquidAXTest is Test {
         );
         assertEq(laxdToken.balanceOf(address(liquidAX)), BORROW_AMOUNT);
 
-        (uint256 collateral, uint256 borrowed, , , ) = liquidAX.borrowings(
-            externalId
-        );
+        (
+            uint256 collateral,
+            uint256 borrowed,
+            ,
+            ,
+            ,
+            uint256 storedFeePercentage
+        ) = liquidAX.borrowings(externalId);
         assertEq(collateral, COLLATERAL_AMOUNT);
         assertEq(borrowed, BORROW_AMOUNT);
+        assertEq(storedFeePercentage, feePercentage);
         assertEq(liquidAX.ownerOf(externalId), user);
     }
 
@@ -64,19 +79,43 @@ contract LiquidAXTest is Test {
         uint256 externalId2 = 2;
         uint256 externalId3 = 3;
 
+        uint256 feePercentage1 = 100; // 1%
+        uint256 feePercentage2 = 750; // 7.5%
+        uint256 feePercentage3 = 250; // 2.5%
+
+        uint256 nearestSpot = 0;
+
         vm.startPrank(user1);
         collateralToken.approve(address(liquidAX), 100e18);
-        liquidAX.borrow(100e18, 50e18, externalId1);
+        liquidAX.borrow(
+            100e18,
+            50e18,
+            externalId1,
+            feePercentage1,
+            nearestSpot
+        );
         vm.stopPrank();
 
         vm.startPrank(user2);
         collateralToken.approve(address(liquidAX), 100e18);
-        liquidAX.borrow(100e18, 75e18, externalId2);
+        liquidAX.borrow(
+            100e18,
+            75e18,
+            externalId2,
+            feePercentage2,
+            nearestSpot
+        );
         vm.stopPrank();
 
         vm.startPrank(user3);
         collateralToken.approve(address(liquidAX), 100e18);
-        liquidAX.borrow(100e18, 25e18, externalId3);
+        liquidAX.borrow(
+            100e18,
+            25e18,
+            externalId3,
+            feePercentage3,
+            nearestSpot
+        );
         vm.stopPrank();
 
         // Advance time to meet withdrawal delay
@@ -84,13 +123,13 @@ contract LiquidAXTest is Test {
 
         // Withdraw in reverse order to test insertion
         vm.prank(user3);
-        liquidAX.withdraw(externalId3, 0);
+        liquidAX.withdraw(externalId3, nearestSpot);
 
         vm.prank(user2);
-        liquidAX.withdraw(externalId2, 0);
+        liquidAX.withdraw(externalId2, nearestSpot);
 
         vm.prank(user1);
-        liquidAX.withdraw(externalId1, 0);
+        liquidAX.withdraw(externalId1, nearestSpot);
 
         // Check if the borrowings are in the correct order
         assertEq(
@@ -155,7 +194,7 @@ contract LiquidAXTest is Test {
         // Setup: Borrow to mint NFT
         vm.startPrank(user);
         collateralToken.approve(address(liquidAX), COLLATERAL_AMOUNT);
-        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT, externalId);
+        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT, externalId, 100, 0);
 
         // Transfer NFT
         liquidAX.transferFrom(user, newOwner, externalId);
@@ -172,7 +211,7 @@ contract LiquidAXTest is Test {
         // Setup: Borrow to mint NFT
         vm.startPrank(user);
         collateralToken.approve(address(liquidAX), COLLATERAL_AMOUNT);
-        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT, externalId);
+        liquidAX.borrow(COLLATERAL_AMOUNT, BORROW_AMOUNT, externalId, 100, 0);
 
         // Attempt to transfer NFT from non-owner
         vm.stopPrank();

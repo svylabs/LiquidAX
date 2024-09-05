@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Borrowing.sol";
 import "./LiquidationAuction.sol";
-import "./LAXDTOken.sol";
+import "./LAXDToken.sol";
 import "./OrderedDoublyLinkedList.sol";
 import "./StabilityPool.sol";
 
@@ -21,8 +21,10 @@ contract LiquidAX is ERC721, ReentrancyGuard {
 
     mapping(uint256 => Borrowing.BorrowingData) public borrowings;
     OrderedDoublyLinkedList.List private borrowingsList;
+    OrderedDoublyLinkedList.List private feePercentageList;
 
     uint256 public constant WITHDRAWAL_DELAY = 1 hours;
+    uint256 public constant MAX_FEE_PERCENTAGE = 10000; // 100% in basis points
 
     constructor(address _collateralToken) ERC721("LiquidAX Borrowing", "LAXB") {
         collateralToken = IERC20(_collateralToken);
@@ -55,7 +57,9 @@ contract LiquidAX is ERC721, ReentrancyGuard {
     function borrow(
         uint256 collateralAmount,
         uint256 borrowAmount,
-        uint256 externalId
+        uint256 externalId,
+        uint256 feePercentage,
+        uint256 nearestSpot
     ) external nonReentrant returns (uint256) {
         require(canBorrow(externalId), "Borrowing already exists");
         require(
@@ -63,6 +67,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             "Collateral amount must be greater than 0"
         );
         require(borrowAmount > 0, "Borrow amount must be greater than 0");
+        require(feePercentage <= MAX_FEE_PERCENTAGE, "Fee percentage too high");
 
         require(
             collateralToken.transferFrom(
@@ -81,8 +86,18 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             collateralAmount,
             borrowAmount
         );
+        borrowings[externalId].feePercentage = feePercentage;
 
-        emit Borrowed(msg.sender, externalId, collateralAmount, borrowAmount);
+        // Insert into feePercentageList
+        feePercentageList.upsert(externalId, feePercentage, nearestSpot);
+
+        emit Borrowed(
+            msg.sender,
+            externalId,
+            collateralAmount,
+            borrowAmount,
+            feePercentage
+        );
         return externalId;
     }
 
@@ -107,7 +122,18 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         );
 
         borrowing.isWithdrawn = true;
-        laxdToken.transfer(msg.sender, borrowing.borrowAmount);
+
+        // Calculate fee
+        uint256 feeAmount = (borrowing.borrowAmount * borrowing.feePercentage) /
+            MAX_FEE_PERCENTAGE;
+        uint256 amountToTransfer = borrowing.borrowAmount - feeAmount;
+
+        // Transfer LAXD to borrower
+        laxdToken.transfer(msg.sender, amountToTransfer);
+
+        // Pay fee to stability pool
+        laxdToken.approve(address(stabilityPool), feeAmount);
+        stabilityPool.addLaxdReward(feeAmount);
 
         // Calculate the ratio (borrowAmount per collateral)
         uint256 ratio = (borrowing.borrowAmount * 1e18) /
@@ -116,7 +142,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         // Insert the borrowing into the ordered list
         borrowingsList.upsert(tokenId, ratio, nearestSpot);
 
-        emit Withdrawn(msg.sender, borrowing.borrowAmount);
+        emit Withdrawn(msg.sender, amountToTransfer, feeAmount);
     }
 
     function getLowestRiskBorrowing() public view returns (uint256) {
@@ -143,7 +169,12 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         address indexed borrower,
         uint256 indexed externalId,
         uint256 collateralAmount,
-        uint256 borrowAmount
+        uint256 borrowAmount,
+        uint256 feePercentage
     );
-    event Withdrawn(address indexed borrower, uint256 amount);
+    event Withdrawn(
+        address indexed borrower,
+        uint256 amount,
+        uint256 feeAmount
+    );
 }

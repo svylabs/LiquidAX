@@ -8,6 +8,7 @@ library Borrowing {
         uint256 borrowTime;
         bool isLiquidated;
         bool isWithdrawn;
+        uint256 feePercentage;
     }
 
     function initiateBorrowing(
@@ -20,6 +21,7 @@ library Borrowing {
         self.borrowTime = block.timestamp;
         self.isLiquidated = false;
         self.isWithdrawn = false;
+        self.feePercentage = 0;
     }
 
     function calculateRatio(
