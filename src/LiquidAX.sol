@@ -93,6 +93,12 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             "Withdrawal delay not met"
         );
 
+        // Add check for ongoing auction
+        require(
+            !liquidationAuction.isAuctionActive(tokenId),
+            "Auction is active"
+        );
+
         borrowing.isWithdrawn = true;
         laxdToken.transfer(msg.sender, borrowing.borrowAmount);
 

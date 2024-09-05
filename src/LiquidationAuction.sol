@@ -431,6 +431,14 @@ contract LiquidationAuction is Ownable {
         LIQUIDATION_TARGET_THRESHOLD = newThreshold;
         emit LiquidationThresholdUpdated(newThreshold);
     }
+
+    function removeAuction(uint256 tokenId) external onlyOwner {
+        delete auctionToTokenId[tokenId];
+    }
+
+    function isAuctionActive(uint256 tokenId) public view returns (bool) {
+        return auctionToTokenId[tokenId] != address(0x0);
+    }
     // Other functions like getAuctionDetails can be implemented here if needed
     // ...
 }
