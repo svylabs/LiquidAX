@@ -8,6 +8,7 @@ import "./Borrowing.sol";
 import "./LiquidationAuction.sol";
 import "./LAXDTOken.sol";
 import "./OrderedDoublyLinkedList.sol";
+import "./StabilityPool.sol";
 
 contract LiquidAX is ERC721, ReentrancyGuard {
     using Borrowing for Borrowing.BorrowingData;
@@ -16,6 +17,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
     LAXDToken public laxdToken;
     IERC20 public collateralToken;
     LiquidationAuction public liquidationAuction;
+    StabilityPool public stabilityPool;
 
     mapping(uint256 => Borrowing.BorrowingData) public borrowings;
     OrderedDoublyLinkedList.List private borrowingsList;
@@ -25,9 +27,14 @@ contract LiquidAX is ERC721, ReentrancyGuard {
     constructor(address _collateralToken) ERC721("LiquidAX Borrowing", "LAXB") {
         collateralToken = IERC20(_collateralToken);
         laxdToken = new LAXDToken();
+        stabilityPool = new StabilityPool(
+            address(laxdToken),
+            address(collateralToken)
+        );
         liquidationAuction = new LiquidationAuction(
             _collateralToken,
-            address(laxdToken)
+            address(laxdToken),
+            address(stabilityPool)
         );
     }
 

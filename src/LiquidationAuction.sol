@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./OrderedDoublyLinkedList.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "./interfaces/IStabilityPool.sol";
 
 interface IBurnableToken is IERC20 {
     function burn(address account, uint256 amount) external;
@@ -44,6 +45,10 @@ contract Auction is ReentrancyGuard {
 
     LiquidationAuction public liquidationAuctionContract;
 
+    IStabilityPool public stabilityPool;
+    mapping(address => uint256) public stabilityPoolBorrows;
+    uint256 public totalStabilityPoolBorrow;
+
     event BidPlaced(
         address bidder,
         uint256 amount,
@@ -68,7 +73,8 @@ contract Auction is ReentrancyGuard {
         address _collateralToken,
         address _laxdToken,
         address _owner,
-        address _liquidationAuctionContract
+        address _liquidationAuctionContract,
+        address _stabilityPool
     ) {
         tokenId = _tokenId;
         startTime = block.timestamp;
@@ -84,6 +90,7 @@ contract Auction is ReentrancyGuard {
         );
         liquidationTargetThreshold = liquidationAuctionContract
             .LIQUIDATION_TARGET_THRESHOLD();
+        stabilityPool = IStabilityPool(_stabilityPool);
         updateTargetRepayAmount();
     }
 
@@ -104,6 +111,43 @@ contract Auction is ReentrancyGuard {
         uint256 bidId = getBidId();
 
         bool isLiquidation = repayAmount < targetRepayAmount;
+
+        if (isLiquidation) {
+            uint256 userLaxdBalance = laxdToken.balanceOf(msg.sender);
+            uint256 stabilityPoolBorrow = 0;
+
+            if (userLaxdBalance < repayAmount) {
+                stabilityPoolBorrow = repayAmount - userLaxdBalance;
+                require(
+                    stabilityPool.canBorrow(msg.sender, stabilityPoolBorrow),
+                    "Insufficient funds in Stability Pool"
+                );
+
+                uint256 additionalBorrow = 0;
+                if (stabilityPoolBorrow > totalStabilityPoolBorrow) {
+                    additionalBorrow =
+                        stabilityPoolBorrow -
+                        totalStabilityPoolBorrow;
+                    stabilityPool.borrow(address(this), additionalBorrow);
+                    totalStabilityPoolBorrow += additionalBorrow;
+                }
+
+                stabilityPoolBorrows[msg.sender] += stabilityPoolBorrow;
+            }
+
+            // Transfer user's LAXD tokens
+            if (userLaxdBalance > 0) {
+                uint256 transferAmount = Math.min(userLaxdBalance, repayAmount);
+                require(
+                    laxdToken.transferFrom(
+                        msg.sender,
+                        address(this),
+                        transferAmount
+                    ),
+                    "LAXD transfer failed"
+                );
+            }
+        }
 
         bidToAddress[bidId] = msg.sender;
 
@@ -276,8 +320,10 @@ contract Auction is ReentrancyGuard {
         if (liquidationBetsSum > nonLiquidationBetsSum) {
             // Handle liquidation case
             uint256 highestBid = liquidationBids.getTail();
-            //address winner = bidToAddress[highestBid];
+            address winner = bidToAddress[highestBid];
             uint256 repayAmount = liquidationBids.get(highestBid).value;
+
+            handleRepayment(winner, repayAmount);
             laxdToken.burn(address(this), borrowAmount);
 
             // Update liquidation threshold after finalization
@@ -341,6 +387,25 @@ contract Auction is ReentrancyGuard {
         );
         emit LiquidationThresholdUpdated(liquidationTargetThreshold);
     }
+
+    function handleRepayment(address winner, uint256 repayAmount) internal {
+        uint256 stabilityPoolBorrow = stabilityPoolBorrows[winner];
+        if (stabilityPoolBorrow > 0) {
+            uint256 repayToStabilityPool = Math.min(
+                stabilityPoolBorrow,
+                repayAmount
+            );
+            laxdToken.transfer(address(stabilityPool), repayToStabilityPool);
+            stabilityPool.repay(winner, repayToStabilityPool);
+            stabilityPoolBorrows[winner] -= repayToStabilityPool;
+            totalStabilityPoolBorrow -= repayToStabilityPool;
+            repayAmount -= repayToStabilityPool;
+        }
+
+        if (repayAmount > 0) {
+            laxdToken.burn(address(this), repayAmount);
+        }
+    }
 }
 
 contract LiquidationAuction is Ownable {
@@ -348,6 +413,7 @@ contract LiquidationAuction is Ownable {
 
     IERC20 public collateralToken;
     IBurnableToken public laxdToken;
+    IStabilityPool public stabilityPool;
 
     mapping(uint256 => address) public auctionToTokenId;
 
@@ -361,10 +427,12 @@ contract LiquidationAuction is Ownable {
 
     constructor(
         address _collateralToken,
-        address _laxdToken
+        address _laxdToken,
+        address _stabilityPool
     ) Ownable(msg.sender) {
         collateralToken = IERC20(_collateralToken);
         laxdToken = IBurnableToken(_laxdToken);
+        stabilityPool = IStabilityPool(_stabilityPool);
     }
 
     function initiateAuction(
@@ -408,7 +476,8 @@ contract LiquidationAuction is Ownable {
                 address(collateralToken),
                 address(laxdToken),
                 msg.sender,
-                address(this)
+                address(this),
+                address(stabilityPool)
             );
     }
 
