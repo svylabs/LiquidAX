@@ -9,6 +9,7 @@ import "./LiquidationAuction.sol";
 import "./LAXDToken.sol";
 import "./OrderedDoublyLinkedList.sol";
 import "./StabilityPool.sol";
+import "./RedemptionAuction.sol";
 
 contract LiquidAX is ERC721, ReentrancyGuard {
     using Borrowing for Borrowing.BorrowingData;
@@ -18,6 +19,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
     IERC20 public collateralToken;
     LiquidationAuction public liquidationAuction;
     StabilityPool public stabilityPool;
+    RedemptionAuction public redemptionAuction;
 
     mapping(uint256 => Borrowing.BorrowingData) public borrowings;
     OrderedDoublyLinkedList.List private borrowingsList;
@@ -37,6 +39,11 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             _collateralToken,
             address(laxdToken),
             address(stabilityPool)
+        );
+        redemptionAuction = new RedemptionAuction(
+            address(this),
+            address(laxdToken),
+            _collateralToken
         );
     }
 
@@ -58,8 +65,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         uint256 collateralAmount,
         uint256 borrowAmount,
         uint256 externalId,
-        uint256 feePercentage,
-        uint256 nearestSpot
+        uint256 feePercentage
     ) external nonReentrant returns (uint256) {
         require(canBorrow(externalId), "Borrowing already exists");
         require(
@@ -89,7 +95,6 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         borrowings[externalId].feePercentage = feePercentage;
 
         // Insert into feePercentageList
-        feePercentageList.upsert(externalId, feePercentage, nearestSpot);
 
         emit Borrowed(
             msg.sender,
@@ -103,7 +108,8 @@ contract LiquidAX is ERC721, ReentrancyGuard {
 
     function withdraw(
         uint256 tokenId,
-        uint256 nearestSpot
+        uint256 nearestSpotForRatio,
+        uint256 nearestSpotForFee
     ) external nonReentrant {
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
         Borrowing.BorrowingData storage borrowing = borrowings[tokenId];
@@ -140,7 +146,12 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             borrowing.collateralAmount;
 
         // Insert the borrowing into the ordered list
-        borrowingsList.upsert(tokenId, ratio, nearestSpot);
+        borrowingsList.upsert(tokenId, ratio, nearestSpotForRatio);
+        feePercentageList.upsert(
+            tokenId,
+            borrowing.feePercentage,
+            nearestSpotForFee
+        );
 
         emit Withdrawn(msg.sender, amountToTransfer, feeAmount);
     }
@@ -157,6 +168,10 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         uint256 id
     ) public view returns (OrderedDoublyLinkedList.Node memory) {
         return borrowingsList.getNode(id);
+    }
+
+    function getLowestFeePercentageBorrowing() public view returns (uint256) {
+        return feePercentageList.getHead();
     }
 
     // Additional functions to be implemented:
