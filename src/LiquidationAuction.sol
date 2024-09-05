@@ -276,9 +276,9 @@ contract Auction is ReentrancyGuard {
         if (liquidationBetsSum > nonLiquidationBetsSum) {
             // Handle liquidation case
             uint256 highestBid = liquidationBids.getTail();
-            address winner = bidToAddress[highestBid];
+            //address winner = bidToAddress[highestBid];
             uint256 repayAmount = liquidationBids.get(highestBid).value;
-            laxdToken.burn(winner, repayAmount);
+            laxdToken.burn(address(this), borrowAmount);
 
             // Update liquidation threshold after finalization
             updateLiquidationThreshold(repayAmount);
