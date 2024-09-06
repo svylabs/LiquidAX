@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./LiquidAX.sol";
 import "./OrderedDoublyLinkedList.sol";
 
-contract Auction is ReentrancyGuard {
+contract RedemptionAuction is ReentrancyGuard {
     using OrderedDoublyLinkedList for OrderedDoublyLinkedList.List;
 
     IERC20 public laxdToken;
@@ -54,7 +54,8 @@ contract Auction is ReentrancyGuard {
     function placeBid(
         bool shouldRedeem,
         uint256 redeemPrice,
-        uint256 bet
+        uint256 bet,
+        uint256 nearestSpot
     ) external nonReentrant {
         require(block.timestamp < endTime, "Auction ended");
         require(bet > 0, "Bet must be greater than 0");
@@ -75,9 +76,13 @@ contract Auction is ReentrancyGuard {
 
         if (shouldRedeem) {
             totalRedeemBets += bet;
-            if (!redeemPrices.contains(redeemPrice)) {
-                redeemPrices.insert(redeemPrice);
-            }
+            //if (!redeemPrices.contains(redeemPrice)) {
+            redeemPrices.upsert(
+                uint256(uint160(msg.sender)),
+                redeemPrice,
+                nearestSpot
+            );
+            //}
             if (totalRedeemBets > totalAntiRedeemBets && !isRedeemWinning) {
                 extendAuction();
             }
@@ -125,9 +130,10 @@ contract Auction is ReentrancyGuard {
     }
 
     function updateWinningRedeemPrice() private {
-        if (!redeemPrices.isEmpty()) {
-            winningRedeemPrice = redeemPrices.getLast();
-        }
+        //if (!redeemPrices.isEmpty()) {
+        uint256 tail = redeemPrices.getTail();
+        winningRedeemPrice = redeemPrices.getNode(tail).value;
+        //}
     }
 
     function extendAuction() private {
@@ -189,12 +195,12 @@ contract Auction is ReentrancyGuard {
     }
 }
 
-contract RedemptionAuction is ReentrancyGuard {
+contract RedemptionAuctionManager is ReentrancyGuard {
     LiquidAX public liquidAX;
     IERC20 public laxdToken;
     IERC20 public collateralToken;
 
-    Auction public currentAuction;
+    RedemptionAuction public currentAuction;
 
     event AuctionStarted(address auctionAddress);
     event RedemptionExecuted(uint256 redeemPrice, uint256 totalRedeemed);
@@ -214,7 +220,7 @@ contract RedemptionAuction is ReentrancyGuard {
             address(currentAuction) == address(0) || currentAuction.finalized(),
             "Auction in progress"
         );
-        currentAuction = new Auction(address(laxdToken));
+        currentAuction = new RedemptionAuction(address(laxdToken));
         emit AuctionStarted(address(currentAuction));
     }
 
@@ -248,7 +254,7 @@ contract RedemptionAuction is ReentrancyGuard {
         emit RedemptionExecuted(redeemPrice, totalToRedeem);
 
         // Reset current auction
-        currentAuction = Auction(address(0));
+        currentAuction = RedemptionAuction(address(0));
     }
 
     // Additional functions for interacting with the current auction can be added here

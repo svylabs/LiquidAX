@@ -12,7 +12,7 @@ interface IBurnableToken is IERC20 {
     function burn(address account, uint256 amount) external;
 }
 
-contract Auction is ReentrancyGuard {
+contract LiquidationAuction is ReentrancyGuard {
     using OrderedDoublyLinkedList for OrderedDoublyLinkedList.List;
     uint256 public constant AUCTION_DURATION = 24 hours;
     uint256 public constant BID_EXTENSION_PERIOD = 1 hours;
@@ -43,7 +43,7 @@ contract Auction is ReentrancyGuard {
     mapping(address => bool) public userWantsToRepay;
     uint256 public usersWillingToRepay;
 
-    LiquidationAuction public liquidationAuctionContract;
+    LiquidationAuctionManager public liquidationAuctionContract;
 
     IStabilityPool public stabilityPool;
     mapping(address => uint256) public stabilityPoolBorrows;
@@ -85,7 +85,7 @@ contract Auction is ReentrancyGuard {
         owner = _owner;
         auctionEndTime = block.timestamp + BID_EXTENSION_PERIOD;
         isLiquidationWinning = false; // Initially, non-liquidation side is winning
-        liquidationAuctionContract = LiquidationAuction(
+        liquidationAuctionContract = LiquidationAuctionManager(
             _liquidationAuctionContract
         );
         liquidationTargetThreshold = liquidationAuctionContract
@@ -408,7 +408,7 @@ contract Auction is ReentrancyGuard {
     }
 }
 
-contract LiquidationAuction is Ownable {
+contract LiquidationAuctionManager is Ownable {
     uint256 public LIQUIDATION_TARGET_THRESHOLD = 110; // 110%
 
     IERC20 public collateralToken;
@@ -444,7 +444,7 @@ contract LiquidationAuction is Ownable {
         uint256 betAmount = msg.value;
         bool isLiquidation = isLiquidationAuction(borrowAmount, repayAmount);
 
-        Auction newAuction = createAuction(
+        LiquidationAuction newAuction = createAuction(
             tokenId,
             borrowAmount,
             collateralAmount
@@ -467,9 +467,9 @@ contract LiquidationAuction is Ownable {
         uint256 tokenId,
         uint256 borrowAmount,
         uint256 collateralAmount
-    ) internal returns (Auction) {
+    ) internal returns (LiquidationAuction) {
         return
-            new Auction(
+            new LiquidationAuction(
                 tokenId,
                 borrowAmount,
                 collateralAmount,
