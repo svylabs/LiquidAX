@@ -3,13 +3,13 @@
 
 # Abstract
 
-LiquidAX is a decentralized, oracle-free stablecoin protocol enabling users to borrow stablecoins against collateral under user-defined conditions. The protocol features a unique liquidation auction mechanism driven by market participants, ensuring that liquidations occur only when deemed necessary by the community, rather than by external oracles. LiquidAX also includes a redemption mechanism, allowing stablecoin holders to redeem their stablecoins for collateral via a market-driven auction process. Borrowers can define their own origination fees, and redemptions prioritize collateral with the lowest fees. LiquidAX charges no ongoing interest, opting for a user set origination fee. The protocol adapts to all market conditions by adjusting collateral requirements and stablecoin value, serving as a dynamic alternative to traditional interest rates. Additionally, the Stability Pool allows users to stake stablecoins, earn rewards from origination fees, and participate in liquidation auctions. By eliminating reliance on external oracles and utilizing a user-driven auction system, LiquidAX ensures a secure, decentralized, and efficient stablecoin ecosystem.
+LiquidAX is a decentralized, oracle-free stablecoin protocol that enables users to borrow stablecoins against collateral with user-defined conditions and no reliance on external price feeds. The protocol introduces a unique auction-driven model for liquidations and redemptions, empowering market participants to determine when liquidations or redemptions should occur, rather than relying on centralized oracles. Borrowers set their own fees at the time of borrowing, with the protocol prioritizing borrowings with lower fees during the redemption process, encouraging competition and efficiency. LiquidAX eliminates ongoing interest charges, opting instead for a dynamically payable fee based on borrowings, while dynamically adjusting collateral requirements to adapt to changing market conditions. The Stability Pool allows users to earn rewards from origination fees and participate in liquidation auctions, ensuring system-wide stability. By leveraging a decentralized auction system for both liquidations and redemptions, LiquidAX creates a secure, efficient, and market-driven stablecoin ecosystem.
 
 # Introduction
 
-LiquidAX introduces an innovative, oracle-free, and decentralized stablecoin protocol designed for borrowing, redemption, and liquidation, with the key feature of market-driven auctions. Unlike traditional stablecoin models that rely on price oracles, LiquidAX enables users to influence both liquidation and redemption processes via open auctions, enhancing decentralization and security.
+LiquidAX introduces an innovative, oracle-free, and decentralized stablecoin protocol designed for borrowing, and achieving stability through redemption and liquidation using key feature of market-driven auctions. Unlike traditional stablecoin models that rely on price oracles, LiquidAX enables users to influence both liquidation and redemption processes via open auctions, enhancing decentralization and security.
 
-A user-defined origination fee model and a redemption mechanism further distinguish LiquidAX from other stablecoin protocols. Users can define their origination fees, with redemptions prioritizing the lowest fees, enabling fair market-driven redemption processes.
+A user-defined origination fee model further distinguishes LiquidAX from other stablecoin protocols. Users can define their origination fees, with redemptions prioritizing the lowest fees, enabling fair market-driven redemption process.
 
 # Oracle-Free Stability: A Key Feature
 
@@ -19,9 +19,9 @@ LiquidAX’s core strength lies in its fully decentralized and oracle-free archi
 
 LiquidAX provides users with a mechanism to borrow stablecoins against collateral without requiring price oracles or charging interest. The system features:
 
-- Borrowing: Users lock collateral to borrow stablecoins with no interest, paying only a one-time origination fee.
+- Borrowing: Users lock collateral to borrow stablecoins with no interest, paying only an adjustable origination fee.
 - Liquidation: If the collateral’s value falls close to a liquidation threshold, a user-driven auction decides whether liquidation should proceed.
-- Redemption: Stablecoin holders can redeem their stablecoins for collateral through a market-driven auction, with the process favoring borrowers who have set the lowest origination fees.
+- Redemption: Stablecoin holders can redeem their stablecoins for collateral through a market-driven auction, with the process favoring redemption of collateral from those who have paid the lowest fees in terms of percentage.
 
 # Borrowing Mechanism
 
@@ -31,24 +31,13 @@ Users initiate borrowing by locking collateral tokens into the LiquidAX smart co
 
 - Collateral Amount: The amount of collateral token deposited.
 - Borrow Amount: The amount of stablecoins the user wishes to borrow.
-- Origination Fee: A one-time fee of 0.5% of the borrowed amount, paid upfront.
+- Origination Fee: An upfront fee paid by users at the time of borrowing.
 
-Borrow requests are organized in a list ordered based on the borrow-to-collateral ratio, prioritizing more collateralized positions for later liquidation.
-
-Another list maintains borrowings that need clearance through the Liquidation Auction mechanism.
+Borrow requests are organized in a list ordered based on the borrow-to-collateral ratio, prioritizing more collateralized positions for later liquidation. Another list orders borrowings by fee paid.
 
 ## Borrowing Delay and Withdrawal
 
-After submitting a borrow request, the user must wait to withdraw stablecoins. During this time, the borrowing is subject to a potential liquidation auction. If no auction is triggered, or if the auction does not result in liquidation, the user can withdraw their stablecoins after the waiting period. Importantly, users incur no interest charges during this waiting period or at any time during the life of the loan.
-
-## Market Condition Adaptation
-
-LiquidAX is designed to operate effectively in all market conditions. The protocol adapts by varying the collateral requirements and the price of the stablecoin, which serves as a proxy for traditional interest rates:
-
-- High Interest Rate Environments: As interest rates in the broader market rise, LiquidAX increases the collateral requirements for borrowing. This higher collateral ratio compensates for the increased cost of capital, maintaining the stability of the system.
-- Low or Negative Interest Rate Environments: Conversely, in scenarios where interest rates are low or negative, LiquidAX decreases the collateral requirements. This is achieved by adjusting the price of the stablecoin relative to fiat, making it more favorable for borrowers while still ensuring the protocol’s security.
-
-LiquidAX does not target a specific value for the stablecoin; instead, the stablecoin’s value is determined by market conditions and is dynamically adjusted through the collateral ratio and liquidation threshold. This approach ensures that the protocol remains resilient and responsive to varying economic conditions.
+After submitting a borrow request, the user must wait to withdraw stablecoins. During this time, the borrowing is subject to a potential liquidation auction. If no auction is triggered, or if the auction does not result in liquidation, the user can withdraw their stablecoins after the waiting period, set to 1 hour.
 
 # Stability Pool
 
@@ -56,14 +45,11 @@ The Stability Pool is a key component of LiquidAX, designed to enhance the proto
 
 ## Stability Pool Mechanics
 
-Users can stake their stablecoins in the Stability Pool, earning rewards in the form of a portion of the origination fees collected by the protocol. These rewards are distributed proportionally to the amount staked by each participant.
+Users can stake their stablecoins in the Stability Pool, earning rewards in the form of a portion of the fees collected by the protocol. These rewards are distributed proportionally to the amount staked by each participant.
 
 ## Participation in Liquidation Auctions
 
 The Stability Pool also plays a crucial role in liquidation auctions by providing liquidity. During a liquidation auction, users can repay 100% of the borrowed amount of stablecoins from the Stability Pool to place their bids. Any amount of repay amount during liquidation above the borrowed amount, the user has to cover themselves. After liquidation, stability pool users receive all the collateral at a discounted price, and a part of the repay amount upto 5%, while the bidder receives the winning proceeds from the bet depending on their share.
-
-- Borrowing from the Stability Pool: Users borrowing stablecoins from the Stability Pool during a liquidation auction pay a fee equal to 10% of the winning bet proceeds. This fee is directed back to the Stability Pool, benefiting all stakers.
-- Collateral Distribution: After a successful liquidation, 90% of the discounted collateral is distributed among the Stability Pool participants based on their stakes, while the remaining 10% is given to the user who placed the winning bid.
 
 ## Strategic Importance
 
@@ -77,16 +63,19 @@ To initiate a liquidation auction, LiquidAX introduces the "dealer" concept. The
 
 ## Triggering a Liquidation Auction
 
-During the one-hour delay, any user can trigger a liquidation auction by placing an open bid.
+Any user can trigger a liquidation auction by placing an open bid with
+
+- Repay Amount: Amount of stablecoins a user is willing to repay the protocol when a liquidation event happens.
+- Bet: Amount of money a user is willing to risk during the auction process either in favor of liquidation or non-liquidation.
 
 ## Auction Bidding Process
 
-Other users can join the auction by placing their own open bids, specifying a repay value and bet. The auction remains open as long as new bids are placed within one hour from the moment a lead is established by either side.
+Other users can join the auction by placing their own open bids, specifying a repay value and bet. The auction remains open as long as new bids are placed within 20 minutes from the moment a lead is established by either side.
 
-- Auction Duration: The auction concludes if no new bets are placed within one hour from the moment a lead is established on either side. If one side continues to receive new bets while the other side does not, the auction will conclude based on the time of the earliest remaining bid from the side with the lead. This ensures that the auction's duration is influenced by competitive activity on both sides, preventing indefinite extensions due to one-sided bidding.
+- Auction Duration: The auction concludes if no new bets are placed within 20 minutes from the moment a lead is established on either side. If one side continues to receive new bets while the other side does not, the auction will conclude based on the time of the earliest remaining bid from the side with the lead. This ensures that the auction's duration is influenced by competitive activity on both sides, preventing indefinite extensions due to one-sided bidding.
 - Bid Incrementation: Participants cannot revise their bets once submitted. However, they can increase their bets during the auction by placing additional bids on their chosen side, which can influence the outcome and strengthen their position.
 - Real-Time Repayment Decisions: During the auction, participants on the leading side have the option to decide whether to repay the debt, depending on market conditions and their assessment of the collateral's value. The protocol ensures that at least one participant repays the specified amount, ensuring that the debt is covered if liquidation occurs.
-  -Bid: The amount of money the user is willing to risk during the auction process. This bet represents the commitment to either repay the debt (if the auction favors liquidation) or contribute to the pool opposing liquidation. The bets determine the participants' stakes in the outcome of the auction.
+- Bid: The amount of money the user is willing to risk during the auction process. This bet represents the commitment to either repay the debt (if the auction favors liquidation) or contribute to the pool opposing liquidation. The bets determine the participants' stakes in the outcome of the auction.
 
 The auction’s conclusion is dynamic, allowing for a responsive and fair process that encourages active participation and market-driven outcomes.
 
@@ -99,35 +88,45 @@ Liquidation is triggered if, by the end of the auction, the cumulative bids on t
 
 This mechanism ensures that liquidation only takes place when deemed necessary by market participants, with transparent and open bidding determining the outcome.
 
-# Redemption Auction Mechanism
-
-In addition to the existing borrowing and liquidation features, LiquidAX introduces a redemption auction mechanism. This new mechanism allows stablecoin holders to redeem their stablecoins for collateral in a decentralized and market-driven manner.
-
-## User-Defined Origination Fees
-
-Borrowers can now specify their own origination fees when locking collateral into the LiquidAX protocol, with a minimum baseline set by the system. These origination fees influence the redemption process, as users with lower origination fees have their collateral prioritized for redemption. This feature encourages borrowers to compete by setting lower fees, benefiting the entire protocol by providing a more efficient collateral management system.
+# Redemption
 
 ## Redemption Auction Process
 
-### Auction Initiation:
+LiquidAX introduces an oracle free redemption auction mechanism that allows stablecoin holders to redeem their stablecoins for collateral in a decentralized and market-driven manner.
 
-Any user holding LiquidAX stablecoins can initiate a redemption auction by specifying a baseline price for the collateral in terms of stablecoins.
-This baseline price serves as the starting bid for the auction.
+### Auction Initiation
 
-### Bidding Process:
+Any stablecoin holder can initiate a redemption auction by placing a bid with the following parameters:
 
-Participants can place bids higher than the baseline price, reflecting their perception of the collateral’s value relative to the market.
-The auction remains open until there is a 15-minute period of inactivity, after which the highest bid is deemed the winner.
+- Should Redeem: A binary value (Yes/No) indicating whether the user believes redemption should occur.
+- Redeem Price: The price in stablecoins per unit of collateral that the user is willing to accept.
+- Bet: The amount of stablecoins the user is willing to wager in favor of their bid.
 
-### Redemption Execution:
+Once initiated, the auction starts with a default duration of 20 minutes.
 
-Once the auction concludes, all redeemers exchange their stablecoins for the collateral at the winning bid price.
-The collateral corresponding to the redeemers' stablecoins is selected based on the lowest origination fees set by borrowers.
+### Dynamic Auction Prolongation
 
-### Fee Structure:
+If the leading side (either in favor or against redemption) changes during the auction, the auction duration is extended by an additional 20 minutes. This ensures that the auction remains active as long as participants are placing competitive bids, allowing for market-driven price discovery.
 
-Redeemers pay a redemption fee based on the difference between their bid and the winning bid. The closer the bid is to the final market-driven price, the lower the fee.
-A portion of these fees is redistributed to the Stability Pool to incentivize staking and provide liquidity to the protocol.
+### Winning and Losing Sides
+
+Winning Side: The side (redeem or anti-redeem) with the highest aggregate bets when the auction closes.
+
+- If the redemption side wins, the highest Redeem Price from the winning side is chosen as the final price for all participants. The aggregated bets by the losing side is distributed to the winning side proportionally to their own bets.
+- If the anti-redemption side wins, the auction concludes without any redemptions.
+
+### Optional Redemption Participation
+
+After the conclusion of the auction, winning users have 5 minutes to change their mind about redemption at a particular price. Users who do not wish to redeem at the final chosen Redeem Price can opt out. Redemptions will be processed only for the stablecoins of users who agree to the selected price. If more than 67% of the stablecoins initially set for redemption are withdrawn, the redemption is aborted, and no redemptions occur and the bets are also not redistributed to the winners.
+
+### Auction Closure and Execution
+
+Once the auction concludes:
+
+- If Redemption Side Wins: Protocol redeems all participating stablecoin holders at the winning Redeem Price, provided they choose to redeem.
+- If Anti-Redemption Side Wins: No redemption occurs.
+
+The auction’s dynamic structure ensures that only when a significant portion of the community supports redemption, the process will proceed. The extension of auction time with leading-side changes allows for sufficient market participation, encouraging a fair and transparent price discovery mechanism.
 
 # Economic Incentives
 
@@ -135,11 +134,7 @@ A portion of these fees is redistributed to the Stability Pool to incentivize st
 
 - Borrowers are incentivized to maintain an appropriate collateralization ratio, as liquidations are only triggered when there is significant market consensus. The one-hour delay allows borrowers to reassess their positions before potential liquidation.
 - Borrowers are incentivized to set competitive origination fees, as collateral with the lowest fees will be prioritized in redemption events.
-- Borrowers benefit from a no-interest model, with only a one-time origination fee, updatable based on market conditions, making this a cost effective alternative for borrowers.
-
-## Dealers
-
-Dealers are motivated to monitor borrowing positions and trigger liquidation auctions when necessary. By participating in the auction process, dealers play a crucial role in maintaining the stability of the protocol.
+- Borrowers benefit from a no-interest model, with only dynamically payable fee based on borrowing, updatable based on market conditions, making this a cost effective alternative for borrowers.
 
 ## Stability Pool Participants
 
@@ -177,4 +172,6 @@ LiquidAX is a decentralized protocol, with no central governance or governance t
 
 # Conclusion
 
-LiquidAX revolutionizes stablecoin issuance through its oracle-free, auction-driven processes, including redemption, liquidation, and borrowing. The introduction of user-defined origination fees and a redemption auction allows participants to redeem stablecoins for collateral in a decentralized and market-efficient manner. By aligning incentives across all participants and eliminating reliance on external oracles, LiquidAX creates a resilient, secure, and adaptable stablecoin protocol. This ensures a decentralized financial ecosystem where the community drives outcomes, contributing to a more stable and fair DeFi landscape.
+LiquidAX introduces a new paradigm in decentralized finance by eliminating reliance on oracles and central governance. Through market-driven auction mechanisms, it allows users to dictate both liquidation and redemption outcomes, ensuring a system that adapts dynamically to real-world conditions. The protocol's user-defined origination fees, no-interest borrowing model, and Stability Pool create a flexible, efficient, and resilient stablecoin ecosystem.
+
+By aligning incentives across borrowers, redeemers, and stakers, LiquidAX delivers a secure, decentralized, and transparent financial system that thrives in any market environment, offering a future-proof alternative to traditional stablecoin models.
