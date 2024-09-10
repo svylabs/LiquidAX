@@ -24,7 +24,7 @@ contract RedemptionAuction is ReentrancyGuard {
     uint256 public totalStablecoinForRedemption;
     uint256 public optOutEndTime;
 
-    OrderedDoublyLinkedList.List private redeemPrices;
+    OrderedDoublyLinkedList.List public redeemPrices;
     mapping(address => Bid) public bids;
     mapping(address => bool) public hasOptedOut;
 
@@ -32,6 +32,7 @@ contract RedemptionAuction is ReentrancyGuard {
         bool shouldRedeem;
         uint256 redeemPrice;
         uint256 bet;
+        bool finalized;
     }
 
     event BidPlaced(
@@ -193,6 +194,24 @@ contract RedemptionAuction is ReentrancyGuard {
             100;
         return totalStablecoinForRedemption >= redemptionThreshold;
     }
+
+    function getTail() public view returns (uint256) {
+        return redeemPrices.getTail();
+    }
+
+    function getNode(
+        uint256 index
+    ) public view returns (OrderedDoublyLinkedList.Node memory) {
+        return redeemPrices.getNode(index);
+    }
+
+    function getBid(address bidder) public returns (Bid memory) {
+        return bids[bidder];
+    }
+
+    function finalizeBid(address bidder) public {
+        bids[bidder].finalized = true;
+    }
 }
 
 contract RedemptionAuctionManager is ReentrancyGuard {
@@ -201,6 +220,13 @@ contract RedemptionAuctionManager is ReentrancyGuard {
     IERC20 public collateralToken;
 
     RedemptionAuction public currentAuction;
+
+    uint256 private constant MAX_FEE_PERCENTAGE = 5;
+    uint256 public redeemPrice;
+    uint256 public totalRedeemedCollateral;
+    uint256 public totalAntiRedeemBets;
+    address public highestBidder;
+    uint256 public feePercentage;
 
     event AuctionStarted(address auctionAddress);
     event RedemptionExecuted(uint256 redeemPrice, uint256 totalRedeemed);
@@ -231,30 +257,59 @@ contract RedemptionAuctionManager is ReentrancyGuard {
             "Cannot execute redemption"
         );
 
-        uint256 redeemPrice = currentAuction.winningRedeemPrice();
+        redeemPrice = currentAuction.winningRedeemPrice();
         uint256 totalToRedeem = currentAuction.totalStablecoinForRedemption();
+        totalRedeemedCollateral = (totalToRedeem * 1e18) / redeemPrice;
+        totalAntiRedeemBets = currentAuction.totalAntiRedeemBets();
 
-        // Transfer collateral to this contract
-        uint256 collateralAmount = (totalToRedeem * 1e18) / redeemPrice;
         require(
             collateralToken.transferFrom(
                 address(liquidAX),
                 address(this),
-                collateralAmount
+                totalRedeemedCollateral
             ),
             "Collateral transfer failed"
         );
 
-        // Distribute collateral to winning bidders
-        // (Implementation details depend on your specific requirements)
+        uint256 tail = currentAuction.getTail();
 
-        // Distribute losing bets to winning bidders
-        // (Implementation details depend on your specific requirements)
+        highestBidder = address(uint160(tail));
+        RedemptionAuction.Bid memory bid = currentAuction.getBid(highestBidder);
+        uint256 highestBidAmount = bid.bet;
+        feePercentage = (highestBidAmount * MAX_FEE_PERCENTAGE) / totalToRedeem;
 
         emit RedemptionExecuted(redeemPrice, totalToRedeem);
 
-        // Reset current auction
         currentAuction = RedemptionAuction(address(0));
+    }
+
+    function withdraw() external nonReentrant {
+        require(redeemPrice > 0, "Redemption not executed");
+        RedemptionAuction.Bid memory bid = currentAuction.getBid(msg.sender);
+        require(bid.bet > 0, "No bid found");
+        require(bid.finalized == false, "Bidder is already finalized");
+        require(
+            bid.shouldRedeem && !currentAuction.hasOptedOut(msg.sender),
+            "Not eligible for withdrawal"
+        );
+
+        uint256 collateralShare = (bid.bet * 1e18) / redeemPrice;
+        uint256 feeShare = (bid.bet * totalAntiRedeemBets) /
+            currentAuction.totalRedeemBets();
+        uint256 totalWithdrawal = collateralShare + feeShare;
+
+        if (msg.sender == highestBidder) {
+            uint256 additionalFee = (totalWithdrawal * feePercentage) / 100;
+            totalWithdrawal += additionalFee;
+        }
+
+        require(
+            collateralToken.transfer(msg.sender, totalWithdrawal),
+            "Transfer failed"
+        );
+
+        // Reset user's bid to prevent double withdrawal
+        currentAuction.finalizeBid(msg.sender);
     }
 
     // Additional functions for interacting with the current auction can be added here
