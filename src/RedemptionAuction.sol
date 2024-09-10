@@ -4,6 +4,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./LiquidAX.sol";
 import "./OrderedDoublyLinkedList.sol";
+import "./interfaces/ILAXDToken.sol";
 
 contract RedemptionAuction is ReentrancyGuard {
     using OrderedDoublyLinkedList for OrderedDoublyLinkedList.List;
@@ -23,6 +24,7 @@ contract RedemptionAuction is ReentrancyGuard {
     bool public finalized;
     uint256 public totalStablecoinForRedemption;
     uint256 public optOutEndTime;
+    uint256 public totalRedeemed;
 
     OrderedDoublyLinkedList.List public redeemPrices;
     mapping(address => Bid) public bids;
@@ -195,16 +197,6 @@ contract RedemptionAuction is ReentrancyGuard {
         return totalStablecoinForRedemption >= redemptionThreshold;
     }
 
-    function getTail() public view returns (uint256) {
-        return redeemPrices.getTail();
-    }
-
-    function getNode(
-        uint256 index
-    ) public view returns (OrderedDoublyLinkedList.Node memory) {
-        return redeemPrices.getNode(index);
-    }
-
     function getBid(address bidder) public returns (Bid memory) {
         return bids[bidder];
     }
@@ -212,11 +204,15 @@ contract RedemptionAuction is ReentrancyGuard {
     function finalizeBid(address bidder) public {
         bids[bidder].finalized = true;
     }
+
+    function updateTotalRedeemed(uint256 amount) public {
+        totalRedeemed += amount;
+    }
 }
 
 contract RedemptionAuctionManager is ReentrancyGuard {
     LiquidAX public liquidAX;
-    IERC20 public laxdToken;
+    ILAXDToken public laxdToken;
     IERC20 public collateralToken;
 
     RedemptionAuction public currentAuction;
@@ -237,7 +233,7 @@ contract RedemptionAuctionManager is ReentrancyGuard {
         address _collateralToken
     ) {
         liquidAX = LiquidAX(_liquidAX);
-        laxdToken = IERC20(_laxdToken);
+        laxdToken = ILAXDToken(_laxdToken);
         collateralToken = IERC20(_collateralToken);
     }
 
@@ -250,37 +246,45 @@ contract RedemptionAuctionManager is ReentrancyGuard {
         emit AuctionStarted(address(currentAuction));
     }
 
-    function executeRedemption() external nonReentrant {
+    function executeRedemption(uint256 batchSize) external nonReentrant {
         require(address(currentAuction) != address(0), "No auction exists");
         require(
             currentAuction.canExecuteRedemption(),
             "Cannot execute redemption"
         );
+        require(batchSize > 0, "Batch size must be greater than 0");
+
+        uint256 totalToRedeem = currentAuction.totalStablecoinForRedemption();
+        uint256 totalRedeemed = currentAuction.totalRedeemed();
+        require(totalRedeemed < totalToRedeem, "All redemptions processed");
 
         redeemPrice = currentAuction.winningRedeemPrice();
-        uint256 totalToRedeem = currentAuction.totalStablecoinForRedemption();
-        totalRedeemedCollateral = (totalToRedeem * 1e18) / redeemPrice;
-        totalAntiRedeemBets = currentAuction.totalAntiRedeemBets();
+        uint256 processedCount = 0;
+        uint256 processedAmount = 0;
 
-        require(
-            collateralToken.transferFrom(
-                address(liquidAX),
-                address(this),
-                totalRedeemedCollateral
-            ),
-            "Collateral transfer failed"
-        );
+        while (
+            processedCount < batchSize &&
+            totalRedeemed + processedAmount < totalToRedeem
+        ) {
+            uint256 remainingAmount = totalToRedeem -
+                (totalRedeemed + processedAmount);
+            (address borrower, uint256 redeemedAmount) = liquidAX.redeem(
+                remainingAmount,
+                redeemPrice
+            );
 
-        uint256 tail = currentAuction.getTail();
+            processedAmount += redeemedAmount;
+            processedCount++;
 
-        highestBidder = address(uint160(tail));
-        RedemptionAuction.Bid memory bid = currentAuction.getBid(highestBidder);
-        uint256 highestBidAmount = bid.bet;
-        feePercentage = (highestBidAmount * MAX_FEE_PERCENTAGE) / totalToRedeem;
+            if (redeemedAmount == 0) break; // No more borrowings to redeem
+        }
 
-        emit RedemptionExecuted(redeemPrice, totalToRedeem);
+        currentAuction.updateTotalRedeemed(processedAmount);
+        emit RedemptionExecuted(redeemPrice, processedAmount);
 
-        currentAuction = RedemptionAuction(address(0));
+        if (totalRedeemed + processedAmount >= totalToRedeem) {
+            currentAuction = RedemptionAuction(address(0));
+        }
     }
 
     function withdraw() external nonReentrant {

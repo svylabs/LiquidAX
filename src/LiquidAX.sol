@@ -174,6 +174,53 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         return feePercentageList.getHead();
     }
 
+    function redeem(
+        uint256 amount,
+        uint256 price
+    ) public returns (address borrower, uint256 redeemedAmount) {
+        require(amount > 0, "Amount must be greater than 0");
+
+        uint256 tokenId = feePercentageList.getHead();
+        //borrower = address(uint160(head));
+        uint256 borrowAmount = borrowings[tokenId].borrowAmount;
+
+        redeemedAmount = amount < borrowAmount ? amount : borrowAmount;
+
+        // Transfer collateral to the borrower
+        uint256 collateralAmount = calculateCollateralAmount(
+            redeemedAmount,
+            price
+        );
+        require(
+            collateralToken.transfer(borrower, collateralAmount),
+            "Collateral transfer failed"
+        );
+
+        // Burn stablecoins
+        require(
+            laxdToken.transferFrom(msg.sender, address(this), redeemedAmount),
+            "Stablecoin transfer failed"
+        );
+        // Assuming there's a burn function in the stablecoin contract
+        laxdToken.burn(redeemedAmount);
+
+        // Update borrowing state
+        borrowings[tokenId].borrowAmount -= redeemedAmount;
+        if (borrowings[tokenId].borrowAmount == 0) {
+            borrowings.remove(tokenId);
+            feePercentageList.remove(tokenId);
+        }
+
+        return (borrower, redeemedAmount);
+    }
+
+    function calculateCollateralAmount(
+        uint256 amount,
+        uint256 price
+    ) internal view returns (uint256) {
+        return amount / price;
+    }
+
     // Additional functions to be implemented:
     // - repay()
     // - initiateLiquidationAuction()
