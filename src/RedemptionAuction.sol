@@ -269,6 +269,7 @@ contract RedemptionAuctionManager is ReentrancyGuard {
             uint256 remainingAmount = totalToRedeem -
                 (totalRedeemed + processedAmount);
             (address borrower, uint256 redeemedAmount) = liquidAX.redeem(
+                address(currentAuction),
                 remainingAmount,
                 redeemPrice
             );

@@ -175,6 +175,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
     }
 
     function redeem(
+        address auctionAddress,
         uint256 amount,
         uint256 price
     ) public returns (address borrower, uint256 redeemedAmount) {
@@ -196,18 +197,13 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             "Collateral transfer failed"
         );
 
-        // Burn stablecoins
-        require(
-            laxdToken.transferFrom(msg.sender, address(this), redeemedAmount),
-            "Stablecoin transfer failed"
-        );
         // Assuming there's a burn function in the stablecoin contract
-        laxdToken.burn(redeemedAmount);
+        laxdToken.burn(auctionAddress, redeemedAmount);
 
         // Update borrowing state
         borrowings[tokenId].borrowAmount -= redeemedAmount;
         if (borrowings[tokenId].borrowAmount == 0) {
-            borrowings.remove(tokenId);
+            //borrowings.remove(tokenId);
             feePercentageList.remove(tokenId);
         }
 
@@ -217,7 +213,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
     function calculateCollateralAmount(
         uint256 amount,
         uint256 price
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         return amount / price;
     }
 
