@@ -61,8 +61,8 @@ contract LiquidAXTest is Test {
             uint256 collateral,
             uint256 borrowed,
             ,
-            ,
-            ,
+            bool isLiquidated,
+            bool isWithdrawn,
             uint256 storedFeePercentage,
             ,
 
@@ -70,6 +70,8 @@ contract LiquidAXTest is Test {
         assertEq(collateral, COLLATERAL_AMOUNT);
         assertEq(borrowed, BORROW_AMOUNT);
         assertEq(storedFeePercentage, feePercentage);
+        assertFalse(isLiquidated);
+        assertFalse(isWithdrawn);
         assertEq(liquidAX.ownerOf(externalId), user);
     }
 

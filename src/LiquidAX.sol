@@ -25,8 +25,10 @@ contract LiquidAX is ERC721, ReentrancyGuard {
     OrderedDoublyLinkedList.List private borrowingsList;
     OrderedDoublyLinkedList.List private feePercentageList;
 
-    uint256 public constant WITHDRAWAL_DELAY = 1 hours;
-    uint256 public constant MAX_FEE_PERCENTAGE = 10000; // 100% in basis points
+    uint256 public constant FEE_PERCENTAGE_PRECISION = 10000;
+    uint256 public constant WITHDRAWAL_DELAY = 0 hours; //TODO: Change to 1 hour later
+
+    //uint256 public constant MAX_FEE_PERCENTAGE = 10000; // 100% in basis points
 
     constructor(address _collateralToken) ERC721("LiquidAX Borrowing", "LAXB") {
         collateralToken = IERC20(_collateralToken);
@@ -73,7 +75,6 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             "Collateral amount must be greater than 0"
         );
         require(borrowAmount > 0, "Borrow amount must be greater than 0");
-        require(feePercentage <= MAX_FEE_PERCENTAGE, "Fee percentage too high");
 
         require(
             collateralToken.transferFrom(
@@ -93,8 +94,6 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             borrowAmount
         );
         borrowings[externalId].feePercentage = feePercentage;
-
-        // Insert into feePercentageList
 
         emit Borrowed(
             msg.sender,
@@ -129,9 +128,23 @@ contract LiquidAX is ERC721, ReentrancyGuard {
 
         borrowing.isWithdrawn = true;
 
-        // Calculate fee
+        // Retrieve the token ID with the lowest fee percentage
+        uint256 baseFeeTokenId = feePercentageList.getHead();
+        uint256 baseFeePercentage = borrowings[baseFeeTokenId].feePercentage;
+
+        uint256 totalFeePercentage = borrowing.feePercentage;
+
+        if (borrowing.feePercentage < (FEE_PERCENTAGE_PRECISION / 100)) {
+            // Calculate the total fee percentage
+            totalFeePercentage = borrowing.feePercentage + baseFeePercentage;
+            borrowing.discountFee =
+                (borrowing.borrowAmount * baseFeePercentage) /
+                FEE_PERCENTAGE_PRECISION;
+        }
+
+        // Calculate the fee amount using only the user-set feePercentage
         uint256 feeAmount = (borrowing.borrowAmount * borrowing.feePercentage) /
-            MAX_FEE_PERCENTAGE;
+            FEE_PERCENTAGE_PRECISION;
         uint256 amountToTransfer = borrowing.borrowAmount - feeAmount;
 
         // Transfer LAXD to borrower
@@ -149,7 +162,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         borrowingsList.upsert(tokenId, ratio, nearestSpotForRatio);
         feePercentageList.upsert(
             tokenId,
-            borrowing.feePercentage,
+            totalFeePercentage,
             nearestSpotForFee
         );
 
