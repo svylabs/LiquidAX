@@ -14,8 +14,7 @@ interface IBurnableToken is IERC20 {
 
 contract LiquidationAuction is ReentrancyGuard {
     using OrderedDoublyLinkedList for OrderedDoublyLinkedList.List;
-    uint256 public constant AUCTION_DURATION = 24 hours;
-    uint256 public constant BID_EXTENSION_PERIOD = 1 hours;
+    uint256 public constant BID_EXTENSION_PERIOD = 20 minutes;
     uint256 public auctionEndTime;
     bool public isLiquidationWinning;
 
@@ -102,6 +101,15 @@ contract LiquidationAuction is ReentrancyGuard {
     // distributeNonLiquidationRewards, and other necessary functions here
     // ...
 
+    /**
+     * 
+      placeBid(repayAmount, msg.value, ) on both sides.
+      If the sum(liquidationBets) > sum(nonLiquidationBids), then isLiquidationWinning = true;
+      If the sum(nonLiquidationBids) > sum(liquidationBets), then isLiquidationWinning = false;
+      side change is tracked by leadChanged.
+      auctionEndTime is updated with every lead change.
+     */
+
     function placeBid(
         uint256 repayAmount,
         uint256 nearestSpot
@@ -156,12 +164,7 @@ contract LiquidationAuction is ReentrancyGuard {
         if (isLiquidation) {
             liquidationBetsSum += msg.value;
             liquidationStakes[msg.sender] += msg.value;
-            OrderedDoublyLinkedList.insert(
-                liquidationBids,
-                bidId,
-                repayAmount,
-                nearestSpot
-            );
+            liquidationBids.insert(bidId, repayAmount, nearestSpot);
             if (repayAmount > 0) {
                 userWantsToRepay[msg.sender] = true;
                 usersWillingToRepay++;
@@ -176,12 +179,7 @@ contract LiquidationAuction is ReentrancyGuard {
         } else {
             nonLiquidationBetsSum += msg.value;
             nonLiquidationStakes[msg.sender] += msg.value;
-            OrderedDoublyLinkedList.insert(
-                nonLiquidationBids,
-                bidId,
-                repayAmount,
-                nearestSpot
-            );
+            nonLiquidationBids.insert(bidId, repayAmount, nearestSpot);
             if (
                 nonLiquidationBetsSum > liquidationBetsSum &&
                 isLiquidationWinning
@@ -220,6 +218,13 @@ contract LiquidationAuction is ReentrancyGuard {
         emit BidIncreased(msg.sender, msg.value);
     }
 
+    /**
+     *
+     *
+     * @param wantsToRepay
+     * @param newRepayAmount
+     * @param nearestSpot
+     */
     function changeRepaymentIntention(
         bool wantsToRepay,
         uint256 newRepayAmount,
@@ -253,12 +258,7 @@ contract LiquidationAuction is ReentrancyGuard {
                 newRepayAmount >= borrowAmount,
                 "Repay amount low for liquidation"
             );
-            OrderedDoublyLinkedList.upsert(
-                liquidationBids,
-                bidId,
-                newRepayAmount,
-                nearestSpot
-            );
+            liquidationBids.upsert(bidId, newRepayAmount, nearestSpot);
         } else {
             require(
                 OrderedDoublyLinkedList.getHead(liquidationBids) !=
@@ -293,7 +293,9 @@ contract LiquidationAuction is ReentrancyGuard {
         if (liquidationBetsSum > nonLiquidationBetsSum) {
             uint256 stake = liquidationStakes[msg.sender];
             require(stake > 0, "No liquidation stake");
-            reward = (stake * collateralAmount) / liquidationBetsSum;
+            reward =
+                (stake * (liquidationBetsSum + nonLiquidationBetsSum)) /
+                liquidationBetsSum;
             liquidationStakes[msg.sender] = 0;
         } else {
             uint256 stake = nonLiquidationStakes[msg.sender];
@@ -305,7 +307,7 @@ contract LiquidationAuction is ReentrancyGuard {
         }
 
         require(reward > 0, "No rewards to withdraw");
-        collateralToken.transfer(msg.sender, reward);
+        payable(msg.sender).transfer(reward);
 
         emit RewardWithdrawn(msg.sender, reward);
     }
@@ -415,7 +417,7 @@ contract LiquidationEngine is Ownable {
     IBurnableToken public laxdToken;
     IStabilityPool public stabilityPool;
 
-    mapping(uint256 => address) public auctionToTokenId;
+    mapping(uint256 => address) public tokenToAuctionAddress;
 
     event LiquidationThresholdUpdated(uint256 newThreshold);
     event AuctionStarted(
@@ -443,13 +445,14 @@ contract LiquidationEngine is Ownable {
     ) external payable onlyOwner {
         uint256 betAmount = msg.value;
         bool isLiquidation = isLiquidationAuction(borrowAmount, repayAmount);
+        require(isLiquidation, "Not liquidation auction");
 
         LiquidationAuction newAuction = createAuction(
             tokenId,
             borrowAmount,
             collateralAmount
         );
-        auctionToTokenId[tokenId] = address(newAuction);
+        tokenToAuctionAddress[tokenId] = address(newAuction);
 
         // Initialize the auction with the first bid
         // This part needs to be implemented in the Auction contract
@@ -486,7 +489,7 @@ contract LiquidationEngine is Ownable {
         uint256 repayAmount
     ) internal view returns (bool) {
         uint256 targetRepayAmount = (borrowAmount *
-            (100 + LIQUIDATION_TARGET_THRESHOLD)) / 100;
+            LIQUIDATION_TARGET_THRESHOLD) / 100;
         return repayAmount < targetRepayAmount;
     }
 
@@ -502,11 +505,11 @@ contract LiquidationEngine is Ownable {
     }
 
     function removeAuction(uint256 tokenId) external onlyOwner {
-        delete auctionToTokenId[tokenId];
+        delete tokenToAuctionAddress[tokenId];
     }
 
     function isAuctionActive(uint256 tokenId) public view returns (bool) {
-        return auctionToTokenId[tokenId] != address(0x0);
+        return tokenToAuctionAddress[tokenId] != address(0x0);
     }
     // Other functions like getAuctionDetails can be implemented here if needed
     // ...
