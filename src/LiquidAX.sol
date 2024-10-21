@@ -134,7 +134,9 @@ contract LiquidAX is ERC721, ReentrancyGuard {
 
         uint256 totalFeePercentage = borrowing.feePercentage;
 
-        if (borrowing.feePercentage < (FEE_PERCENTAGE_PRECISION / 100)) {
+        // This is to ensure a fair start for anyone borrowing after there are already many borrowings, and where others have paid more fees.
+        // This is just an accounting trick. Nothing changes about the actual fee paid. It's just to make sure that the user's state doesn't start from 0 fee.
+        if (borrowing.feePercentage < 25) {
             // Calculate the total fee percentage
             totalFeePercentage = borrowing.feePercentage + baseFeePercentage;
             borrowing.discountFee =
@@ -187,12 +189,20 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         return feePercentageList.getHead();
     }
 
+    function getFeePercentageListNode(
+        uint256 id
+    ) public view returns (OrderedDoublyLinkedList.Node memory) {
+        return feePercentageList.getNode(id);
+    }
+
     function redeem(
         address auctionAddress,
         uint256 amount,
         uint256 price
     ) public returns (address borrower, uint256 redeemedAmount) {
         require(amount > 0, "Amount must be greater than 0");
+
+        // TODO: Redeem multiple borrowings if needed
 
         uint256 tokenId = feePercentageList.getHead();
         //borrower = address(uint160(head));
@@ -228,6 +238,36 @@ contract LiquidAX is ERC721, ReentrancyGuard {
         uint256 price
     ) internal pure returns (uint256) {
         return amount / price;
+    }
+
+    function liquidate(
+        uint256 tokenId,
+        uint256 liquidationAmount,
+        address liquidator
+    ) external {
+        //require(ownerOf(tokenId) == msg.sender, "Not token owner");
+        Borrowing.BorrowingData storage borrowing = borrowings[tokenId];
+        require(borrowing.borrowAmount > 0, "No active borrowing");
+        require(!borrowing.isLiquidated, "Borrowing has been liquidated");
+
+        borrowing.isLiquidated = true;
+
+        // Transfer collateral to the borrower
+        uint256 collateralAmount = calculateCollateralAmount(
+            liquidationAmount,
+            borrowing.collateralAmount
+        );
+        require(
+            collateralToken.transfer(liquidator, collateralAmount),
+            "Collateral transfer failed"
+        );
+
+        // Update borrowing state
+        borrowing.borrowAmount -= liquidationAmount;
+        if (borrowing.borrowAmount == 0) {
+            //borrowings.remove(tokenId);
+            feePercentageList.remove(tokenId);
+        }
     }
 
     // Additional functions to be implemented:

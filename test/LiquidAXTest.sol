@@ -83,7 +83,7 @@ contract LiquidAXTest is Test {
 
         uint256 feePercentage1 = 100; // 1%
         uint256 feePercentage2 = 750; // 7.5%
-        uint256 feePercentage3 = 250; // 2.5%
+        uint256 feePercentage3 = 20; // 2.5%
 
         vm.startPrank(user1);
         collateralToken.approve(address(liquidAX), 100e18);
@@ -103,15 +103,14 @@ contract LiquidAXTest is Test {
         // Advance time to meet withdrawal delay
         vm.warp(block.timestamp + liquidAX.WITHDRAWAL_DELAY() + 1);
 
-        // Withdraw in reverse order to test insertion
-        vm.prank(user3);
-        liquidAX.withdraw(externalId3, 0, 0); // nearestSpotForRatio and nearestSpotForFee set to 0
-
         vm.prank(user2);
         liquidAX.withdraw(externalId2, 0, 0);
 
         vm.prank(user1);
         liquidAX.withdraw(externalId1, 0, 0);
+
+        vm.prank(user3);
+        liquidAX.withdraw(externalId3, 0, 0); // nearestSpotForRatio and nearestSpotForFee set to 0
 
         // Check if the borrowings are in the correct order
         assertEq(
