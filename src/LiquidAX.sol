@@ -17,7 +17,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
 
     LAXDToken public laxdToken;
     IERC20 public collateralToken;
-    LiquidationAuctionManager public liquidationAuction;
+    LiquidationEngine public liquidationEngine;
     StabilityPool public stabilityPool;
     RedemptionAuctionManager public redemptionAuction;
 
@@ -35,7 +35,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             address(laxdToken),
             address(collateralToken)
         );
-        liquidationAuction = new LiquidationAuctionManager(
+        liquidationEngine = new LiquidationEngine(
             _collateralToken,
             address(laxdToken),
             address(stabilityPool)
@@ -123,7 +123,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
 
         // Add check for ongoing auction
         require(
-            !liquidationAuction.isAuctionActive(tokenId),
+            !liquidationEngine.isAuctionActive(tokenId),
             "Auction is active"
         );
 

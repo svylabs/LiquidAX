@@ -8,7 +8,11 @@ library Borrowing {
         uint256 borrowTime;
         bool isLiquidated;
         bool isWithdrawn;
-        uint256 feePercentage;
+        uint256 feePercentage; // Fee percentage paid by the user
+        uint256 totalFeePaid; // Total fee paid by the user
+        // Discount for new users. They do not start from 0 fee, instead they start from the lowest fee % paid at that time they
+        // begin borrowing. Only changes how the accounting is done, not the actual fee paid.
+        uint256 discountFee;
     }
 
     function initiateBorrowing(
@@ -22,6 +26,8 @@ library Borrowing {
         self.isLiquidated = false;
         self.isWithdrawn = false;
         self.feePercentage = 0;
+        self.totalFeePaid = 0;
+        self.discountFee = 0;
     }
 
     function calculateRatio(

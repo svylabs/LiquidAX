@@ -43,7 +43,7 @@ contract LiquidationAuction is ReentrancyGuard {
     mapping(address => bool) public userWantsToRepay;
     uint256 public usersWillingToRepay;
 
-    LiquidationAuctionManager public liquidationAuctionContract;
+    LiquidationEngine public liquidationAuctionContract;
 
     IStabilityPool public stabilityPool;
     mapping(address => uint256) public stabilityPoolBorrows;
@@ -85,7 +85,7 @@ contract LiquidationAuction is ReentrancyGuard {
         owner = _owner;
         auctionEndTime = block.timestamp + BID_EXTENSION_PERIOD;
         isLiquidationWinning = false; // Initially, non-liquidation side is winning
-        liquidationAuctionContract = LiquidationAuctionManager(
+        liquidationAuctionContract = LiquidationEngine(
             _liquidationAuctionContract
         );
         liquidationTargetThreshold = liquidationAuctionContract
@@ -408,7 +408,7 @@ contract LiquidationAuction is ReentrancyGuard {
     }
 }
 
-contract LiquidationAuctionManager is Ownable {
+contract LiquidationEngine is Ownable {
     uint256 public LIQUIDATION_TARGET_THRESHOLD = 110; // 110%
 
     IERC20 public collateralToken;

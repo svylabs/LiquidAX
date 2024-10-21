@@ -1,15 +1,15 @@
                                             LiquidAX - A Decentralized, Oracle-Free Stablecoin Protocol
-                                                      Gopalakrishnan G<gopalakrishnan.g@gov.in>
+                                        Sridhar<sg@svylabs.com>, Gopalakrishnan G<gopalakrishnan.g@gov.in>
 
 # Abstract
 
-LiquidAX is a decentralized, oracle-free stablecoin protocol that enables users to borrow stablecoins against collateral with user-defined conditions and no reliance on external price feeds. The protocol introduces a unique auction-driven model for liquidations and redemptions, empowering market participants to determine when liquidations or redemptions should occur, rather than relying on centralized oracles. Borrowers set their own fees at the time of borrowing, with the protocol prioritizing borrowings with lower fees during the redemption process, encouraging competition and efficiency. LiquidAX eliminates ongoing interest charges, opting instead for a dynamically payable fee based on borrowings, while dynamically adjusting collateral requirements to adapt to changing market conditions. The Stability Pool allows users to earn rewards from origination fees and participate in liquidation auctions, ensuring system-wide stability. By leveraging a decentralized auction system for both liquidations and redemptions, LiquidAX creates a secure, efficient, and market-driven stablecoin ecosystem.
+LiquidAX is a decentralized, oracle-free stablecoin protocol that enables users to borrow stablecoins against collateral with user-defined conditions and no reliance on external price feeds. The protocol introduces a unique auction-driven model for liquidations and redemptions, empowering market participants to determine when liquidations or redemptions should occur, rather than relying external oracles. Borrowers set their own fees at the time of borrowing, with the protocol prioritizing borrowings with lower fees during the redemption process, encouraging competition and efficiency. LiquidAX eliminates ongoing interest charges, opting instead for a dynamically payable fee based on borrowings, while dynamically adjusting collateral requirements to adapt to changing market conditions. The Stability Pool allows users to earn rewards from origination fees and participate in liquidation auctions, ensuring system-wide stability. By leveraging a decentralized auction system for both liquidations and redemptions, LiquidAX creates a secure, efficient, and market-driven stablecoin ecosystem.
 
 # Introduction
 
-LiquidAX introduces an innovative, oracle-free, and decentralized stablecoin protocol designed for borrowing, and achieving stability through redemption and liquidation using key feature of market-driven auctions. Unlike traditional stablecoin models that rely on price oracles, LiquidAX enables users to influence both liquidation and redemption processes via open auctions, enhancing decentralization and security.
+LiquidAX introduces an innovative, oracle-free, and decentralized stablecoin protocol designed for borrowing, and achieving stability through redemption and liquidation using the key feature of market-driven auctions. Unlike traditional stablecoin models that rely on price oracles, LiquidAX enables users to influence both liquidation and redemption processes via open auctions, enhancing decentralization and security.
 
-A user-defined origination fee model further distinguishes LiquidAX from other stablecoin protocols. Users can define their origination fees, with redemptions prioritizing the lowest fees, enabling fair market-driven redemption process.
+A user-defined origination fee model further distinguishes LiquidAX from other stablecoin protocols. Users can define their origination fees, updatable later by paying additional fees, with redemptions prioritizing the lowest fee percentage paid, enabling fair market-driven redemption process.
 
 # Oracle-Free Stability: A Key Feature
 
@@ -33,7 +33,7 @@ Users initiate borrowing by locking collateral tokens into the LiquidAX smart co
 - Borrow Amount: The amount of stablecoins the user wishes to borrow.
 - Origination Fee: An upfront fee paid by users at the time of borrowing.
 
-Borrow requests are organized in a list ordered based on the borrow-to-collateral ratio, prioritizing more collateralized positions for later liquidation. Another list orders borrowings by fee paid.
+Borrow requests are organized in a list ordered based on the borrow-to-collateral ratio, prioritizing more collateralized positions for later liquidation. Another list orders borrowings by fee percentage paid.
 
 ## Borrowing Delay and Withdrawal
 
