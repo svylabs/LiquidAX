@@ -19,7 +19,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
     IERC20 public collateralToken;
     LiquidationEngine public liquidationEngine;
     StabilityPool public stabilityPool;
-    RedemptionAuctionManager public redemptionAuction;
+    RedemptionEngine public redemptionEngine;
 
     mapping(uint256 => Borrowing.BorrowingData) public borrowings;
     OrderedDoublyLinkedList.List private borrowingsList;
@@ -40,7 +40,7 @@ contract LiquidAX is ERC721, ReentrancyGuard {
             address(laxdToken),
             address(stabilityPool)
         );
-        redemptionAuction = new RedemptionAuctionManager(
+        redemptionEngine = new RedemptionEngine(
             address(this),
             address(laxdToken),
             _collateralToken

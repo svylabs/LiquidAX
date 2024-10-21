@@ -63,7 +63,9 @@ contract LiquidAXTest is Test {
             ,
             ,
             ,
-            uint256 storedFeePercentage
+            uint256 storedFeePercentage,
+            ,
+
         ) = liquidAX.borrowings(externalId);
         assertEq(collateral, COLLATERAL_AMOUNT);
         assertEq(borrowed, BORROW_AMOUNT);

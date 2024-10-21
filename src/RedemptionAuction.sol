@@ -210,7 +210,7 @@ contract RedemptionAuction is ReentrancyGuard {
     }
 }
 
-contract RedemptionAuctionManager is ReentrancyGuard {
+contract RedemptionEngine is ReentrancyGuard {
     LiquidAX public liquidAX;
     ILAXDToken public laxdToken;
     IERC20 public collateralToken;
